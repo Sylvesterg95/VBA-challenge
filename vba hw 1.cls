@@ -9,117 +9,110 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 Sub tickerloop()
 
- ' worksheet stock
- 
-Dim ws As Worksheet
+    Dim ws As Worksheet
+    Dim last_row As Long
+    Dim open_price As Double
+    Dim close_price As Double
+    Dim quaterly_change As Double
+    Dim ticker As String
+    Dim percent_change As Double
+    Dim volume As Double
+    Dim row As Long
+    Dim column As Integer
+
     For Each ws In ActiveWorkbook.Worksheets
     
-    
-        ' find the last row of the table
-        last_row = ws.Cells(Rows.Count, 1).End(xlUp).row
+        ' Find the last row in column A
+        last_row = ws.Cells(ws.Rows.Count, 1).End(xlUp).row
 
-        ' add headers
-        Cells(1, 9).Value = "Ticker"
-        Cells(1, 10).Value = "Quaterly Change"
-        Cells(1, 11).Value = "Percent Change"
-        Cells(1, 12).Value = "Total Stock Volume"
-      
-        Dim open_price As String
-        Dim close_price As Double
-        Dim quaterly_change As Double
-        Dim ticker As String
-        Dim percent_change As Double
-        
-        Dim volume As String
-        Dim row As Double
-        Dim column As Integer
-        
+        ' Add headers
+        With ws
+            .Cells(1, 9).Value = "Ticker"
+            .Cells(1, 10).Value = "Quarterly Change"
+            .Cells(1, 11).Value = "Percent Change"
+            .Cells(1, 12).Value = "Total Stock Volume"
+        End With
+
+        ' Initialize variables
         volume = 0
         row = 2
         column = 1
-       
-       
-       
-       
+        open_price = ws.Cells(2, column + 2).Value
         
-        ' this is the initial price
-        open_price = Cells(2, column + 2).Value
-        
-          ' check for  any mismatch
+        ' Loop through rows
         For i = 2 To last_row
-        
-         
-            If Cells(i + 1, column).Value <> Cells(i, column).Value Then
-            
-                ' ticker name
-                ticker = Cells(i, column).Value
-                Cells(row, column + 8).Value = ticker
+            If ws.Cells(i + 1, column).Value <> ws.Cells(i, column).Value Then
+                ' Set ticker name
+                ticker = ws.Cells(i, column).Value
+                ws.Cells(row, 9).Value = ticker
                 
-                '  close price
-                close_price = Cells(i, column + 5).Value
-                
-                '  quaterly change
+                ' Calculate close price and quarterly change
+                close_price = ws.Cells(i, column + 5).Value
                 quaterly_change = close_price - open_price
-                Cells(row, column + 8).Value = quaterly_change
-               
-               '  percent change
-                    percent_change = quaterly_change / open_price
-                    Cells(row, column + 11).Value = percent_change
-                    Cells(row, column + 10).NumberFormat = "0.00%"
-               
-               
-               '  total volume per quater
-                volume = volume + Cells(i, column + 6).Value
-                Cells(row, column + 11).Value = volume
+                ws.Cells(row, 10).Value = quaterly_change
                 
-                ' iterate to the next row
+                ' Calculate percent change
+                If open_price <> 0 Then
+                    percent_change = quaterly_change / open_price
+                Else
+                    percent_change = 0
+                End If
+                ws.Cells(row, 11).Value = percent_change
+                ws.Cells(row, 11).NumberFormat = "0.00%"
+                
+                ' Total stock volume
+                volume = volume + ws.Cells(i, column + 6).Value
+                ws.Cells(row, 12).Value = volume
+                
+                ' Move to next row
                 row = row + 1
                 
-                ' reset open price to next ticker
-                open_price = Cells(i + 1, column + 2)
-                
-                ' reset volume for next ticker
+                ' Reset open price and volume
+                If i + 1 <= last_row Then
+                    open_price = ws.Cells(i + 1, column + 2).Value
+                End If
                 volume = 0
-                
             Else
-                volume = volume + Cells(i, column + 6).Value
+                volume = volume + ws.Cells(i, column + 6).Value
             End If
         Next i
-        
-        
-        ' find the last row of ticker column
-        quaterly_change_last_row = ws.Cells(Rows.Count, 9).End(xlUp).row
-        
-        ' set the Cell Colors
+
+        ' Apply conditional formatting for Quarterly Change
+        Dim quaterly_change_last_row As Long
+        quaterly_change_last_row = ws.Cells(ws.Rows.Count, 9).End(xlUp).row
         For j = 2 To quaterly_change_last_row
-            If (Cells(j, 10).Value > 0 Or Cells(j, 10).Value = 0) Then
-                Cells(j, 10).Interior.ColorIndex = 10
-            ElseIf Cells(j, 10).Value < 0 Then
-                Cells(j, 10).Interior.ColorIndex = 3
+            If ws.Cells(j, 10).Value >= 0 Then
+                ws.Cells(j, 10).Interior.ColorIndex = 10 ' Green for positive
+            Else
+                ws.Cells(j, 10).Interior.ColorIndex = 3 ' Red for negative
             End If
         Next j
-       
-        
-        ' find the highest value of each ticker
-        For k = 2 To quaterly_change_last_row
-            If Cells(k, 11).Value = Application.WorksheetFunction.Max(ws.Range("K2:K" & quaterly_change_last_row)) Then
-                Cells(2, 16).Value = Cells(k, 9).Value
-                Cells(2, 17).Value = Cells(k, 11).Value
-                Cells(2, 17).NumberFormat = "0.00%"
-            ElseIf Cells(k, 11).Value = Application.WorksheetFunction.Min(ws.Range("K2:K" & quaterly_change_last_row)) Then
-                Cells(3, 16).Value = Cells(k, 9).Value
-                Cells(3, 17).Value = Cells(k, 11).Value
-                Cells(3, 17).NumberFormat = "0.00%"
-            ElseIf Cells(k, column + 11).Value = Application.WorksheetFunction.Max(ws.Range("L2:L" & quaterly_change_last_row)) Then
-                Cells(4, 16).Value = Cells(k, 9).Value
-                Cells(4, 17).Value = Cells(k, 12).Value
-            End If
-        Next k
-        
-        ActiveSheet.Range("I:Q").Font.Bold = True
-        ActiveSheet.Range("I:Q").EntireColumn.AutoFit
-        Worksheets("Q1").Select
-        
+
+        ' Find max and min for Percent Change and Volume
+        Dim max_percent_row As Long, min_percent_row As Long, max_volume_row As Long
+        max_percent_row = Application.WorksheetFunction.Match(Application.WorksheetFunction.Max(ws.Range("K2:K" & quaterly_change_last_row)), ws.Range("K2:K" & quaterly_change_last_row), 0) + 1
+        min_percent_row = Application.WorksheetFunction.Match(Application.WorksheetFunction.Min(ws.Range("K2:K" & quaterly_change_last_row)), ws.Range("K2:K" & quaterly_change_last_row), 0) + 1
+        max_volume_row = Application.WorksheetFunction.Match(Application.WorksheetFunction.Max(ws.Range("L2:L" & quaterly_change_last_row)), ws.Range("L2:L" & quaterly_change_last_row), 0) + 1
+
+        ws.Cells(2, 16).Value = "Greatest % Increase"
+        ws.Cells(2, 17).Value = ws.Cells(max_percent_row, 9).Value
+        ws.Cells(2, 18).Value = ws.Cells(max_percent_row, 11).Value
+        ws.Cells(2, 18).NumberFormat = "0.00%"
+
+        ws.Cells(3, 16).Value = "Greatest % Decrease"
+        ws.Cells(3, 17).Value = ws.Cells(min_percent_row, 9).Value
+        ws.Cells(3, 18).Value = ws.Cells(min_percent_row, 11).Value
+        ws.Cells(3, 18).NumberFormat = "0.00%"
+
+        ws.Cells(4, 16).Value = "Highest Volume"
+        ws.Cells(4, 17).Value = ws.Cells(max_volume_row, 9).Value
+        ws.Cells(4, 18).Value = ws.Cells(max_volume_row, 12).Value
+
+        ' Format columns
+        With ws.Range("I:Q")
+            .Font.Bold = True
+            .EntireColumn.AutoFit
+        End With
     Next ws
 
 End Sub
